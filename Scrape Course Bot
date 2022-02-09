@@ -2,11 +2,11 @@ import requests
 import os
 import json
 from bs4 import BeautifulSoup
-# ____________________________________________________________________________
-# chỉ cần thay đổi 3 tham số ứng với khóa học muốn tải là có thể chạy được    | 
-# nếu có / ở cuối đường dẫn (path) thì xóa dùm cái, bug lòi thầy k fix được   | 
-# đường dẫn là nơi bắt buộc phải thay đổi                                     |
-# ____________________________________________________________________________|
+# _____________________________________________________________________________________
+# chỉ cần thay đổi 3 giá trị của biến ứng với khóa học muốn tải là có thể chạy được    | 
+# nếu có / ở cuối đường dẫn (path) thì xóa kẻo sinh ra bug                             | 
+# đường dẫn là nơi bắt buộc phải thay đổi                                              |
+# _____________________________________________________________________________________|
 
 course_name = "Vue - The Complete Guide (w/ Router, Vuex, Composition API)"
 path = r"C:\Users\user\Desktop\Course" #đường dẫn để lưu 
