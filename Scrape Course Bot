@@ -1,0 +1,105 @@
+import requests
+import os
+import json
+from bs4 import BeautifulSoup
+# ____________________________________________________________________________
+# chỉ cần thay đổi 3 tham số ứng với khóa học muốn tải là có thể chạy được    | 
+# nếu có / ở cuối đường dẫn (path) thì xóa dùm cái, bug lòi thầy k fix được   | 
+# đường dẫn là nơi bắt buộc phải thay đổi                                     |
+# ____________________________________________________________________________|
+
+course_name = "Vue - The Complete Guide (w/ Router, Vuex, Composition API)"
+path = r"C:\Users\user\Desktop\Course" #đường dẫn để lưu 
+url = "https://hidevs.net/course/vuejs-the-complete-guide"
+
+def create_folder(path, folder_name):
+    newpath = path + "/" + folder_name
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    return newpath
+path = create_folder(path, course_name)
+
+def download_resource(path, resource_id, resource_name, course_id):
+    try:
+        file_name = f"{path}/{resource_name}"
+        if os.path.isfile(file_name): return
+        url = f"https://hidevs.net/rd-download/{course_id}"
+        payload={'id': resource_id}
+        r = requests.request("POST", url, data=payload)
+        if r.status_code != 200: return
+        with open(file_name, "wb+") as f:
+            f.write(r.content)
+    except:
+        pass
+    
+def download_file(path, resource_id, resource_name, course_id):
+    file_name = f"{path}/{resource_name}"
+    if os.path.isfile(file_name): return
+    url = f"https://hidevs.net/dialog/partial/{course_id}"
+    payload={'id': resource_id}
+    r = requests.request("POST", url, data=payload)
+    if r.status_code != 200: return
+    soup = BeautifulSoup(r.text, 'html.parser')
+    url = soup.select("a.btn.btn-primary")[0]['href']
+    r = requests.get(f"https://hidevs.net{url}")
+    with open(file_name, "wb+") as f:
+        f.write(r.content)
+
+def download_video_and_sub(path, resource_id, resource_name, course_id):
+    url = f"https://hidevs.net/lecture/get-video-info/{course_id}"
+    payload={'id': resource_id}
+    r = requests.request("POST", url, data=payload)
+    if r.status_code != 200: return
+    data = json.loads(r.text)
+    video_url = data["videoQualityInfos"][0]["url"]
+    sub_url = data["subs"][0]["url"]
+    download_video(path, video_url, resource_name, course_id)
+    download_subtitle(path, sub_url, resource_name, course_id)
+
+def download_video(path, video_url, video_name, course_id):
+    file_name = f"{path}/{video_name}.mp4"
+    if os.path.isfile(file_name): return
+    r = requests.get(f"https://hidevs.net{video_url}")
+    with open(file_name, "wb+") as f:
+        f.write(r.content)
+
+def download_subtitle(path, sub_url, video_name, course_id):
+    file_name = f"{path}/{video_name}.vtt"
+    if os.path.isfile(file_name): return
+    r = requests.get(f"https://hidevs.net{sub_url}")
+    with open(file_name, "wb+") as f:
+        f.write(r.content)
+
+def handle_onclick_string(text):
+    text = text.split("'")
+    video_id = text[1]
+    if len(text) == 7:
+        video_name = text[3]
+        return [video_name, video_id]
+    return [False, video_id]
+
+def main(url):
+    r = requests.get(url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    form_elem = soup.select("#downloadDialogModal > div > div > form")
+    course_id = form_elem[0]["action"].split('/')[2]
+    card_elems = soup.select("#accordion > div")
+    for card in card_elems:
+#         get chapter name (folder name)
+        header_chapter = card.select("div.card-header.chapter-item > h5")[0].text.replace("\n", "").strip()
+        _path = create_folder(path, header_chapter)
+        resources = card.select("ul > li")
+        for resource in resources:
+            resource_name = resource.text.replace('\n', "").strip()
+#             download
+            try:
+                video_name, resource_id = handle_onclick_string(resource["onclick"])
+                if video_name:
+                    download_video_and_sub(_path, resource_id, video_name, course_id)
+                    continue
+                download_file(_path, resource_id, resource_name, course_id)
+            except:
+                resource_id = resource["data-id"]
+                resource_name = resource["data-name"]
+                download_resource(_path, resource_id, resource_name, course_id)
+main(url)
